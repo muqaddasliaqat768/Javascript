@@ -1,0 +1,26 @@
+name: Write Tests by ID
+on:
+  workflow_dispatch:
+    inputs:
+      ticket_no:
+        description: 'Enter Ticket Number'
+        required: true
+
+jobs:
+  run-ai:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install PyGithub requests
+      - name: Run Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          TICKET_ID: ${{ github.event.inputs.ticket_no }}
+        run: python .github/scripts/generate_by_id.py
