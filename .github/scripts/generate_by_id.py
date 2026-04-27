@@ -8,17 +8,16 @@ def get_test_cases(title, body):
         "Content-Type": "application/json"
     }
     
-    # This prompt tells the AI exactly what to EXCLUDE
+    # This prompt is strictly optimized for single-line scenarios
     prompt = f"""
-    Act as a Senior QA Engineer. Analyze the ticket below and generate a list of test cases.
+    Act as a Senior QA Engineer. Analyze the ticket below and provide ONLY a single-line title for each test case.
     
-    STRICT RULES:
-    1. For every test case, provide ONLY:
-       - Test Case ID: TC-00X - [Title]
-       - Test Case Description: [One sentence summary]
-    2. DO NOT include "Steps", "Expected Results", "Preconditions", or "Environment".
-    3. DO NOT include any introductory text or conclusions.
-    4. Group them by: ### Positive, ### Negative, and ### Edge Cases.
+    STRICT FORMATTING RULES:
+    1. Output ONLY the test case title (e.g., Check "Login with valid email").
+    2. DO NOT include "Test Case ID" or "TC-001".
+    3. DO NOT include "Description", "Steps", or "Expected Results".
+    4. Group them ONLY by these headers: ### Positive Cases, ### Negative Cases, ### Edge Cases.
+    5. Each test case must be a single line bullet point.
 
     Ticket Title: {title}
     Ticket Description: {body}
@@ -27,7 +26,7 @@ def get_test_cases(title, body):
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1 # Keep it low so the AI doesn't get creative
+        "temperature": 0.1
     }
 
     try:
