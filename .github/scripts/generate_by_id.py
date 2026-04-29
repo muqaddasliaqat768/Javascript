@@ -1,35 +1,45 @@
-def get_test_cases(title, body):
-    if not api_key:
-        return "❌ Error: GROQ_API_KEY is not found in Secrets."
-    
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    
-    # This prompt strictly forbids headers and labels
-    prompt = f"""
-    Act as a Senior QA Engineer. Analyze the ticket below and provide a simple list of test scenarios.
-    
-    STRICT RULES:
-    1. Output ONLY the test scenarios.
-    2. Start every line with a bullet point and the word "Check". 
-       Example: * Check "Description of the test"
-    3. DO NOT include headers like "Positive Cases", "Negative Cases", or "Edge Cases".
-    4. DO NOT include any introductory or concluding text.
-    5. Provide ONLY the list.
+import os
+import requests
+from github import Github
 
-    Ticket Title: {title}
-    Ticket Description: {body}
-    """
+# 1. Get Environment Variables
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+ISSUE_NUMBER = int(os.getenv('ISSUE_NUMBER'))
+REPO_NAME = os.getenv('GITHUB_REPOSITORY')
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+
+def get_ai_test_cases(issue_title, issue_body):
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
     
+    prompt = f"""
+    Act as a Senior QA Automation Engineer. Based on the following GitHub Issue, write a set of 
+    manual test cases including:
+    - Positive Cases
+    - Negative Cases
+    - Edge Cases
+    Format the output in clear Markdown with 'Steps to Reproduce' and 'Expected Result'.
+
+    TICKET TITLE: {issue_title}
+    TICKET DESCRIPTION: {issue_body}
+    """
+
     payload = {
         "model": "llama-3.1-8b-instant",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.1
+        "messages": [{"role": "user", "content": prompt}]
     }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    return response.json()['choices'][0]['message']['content']
 
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        return response.json()['choices'][0]['message']['content']
-    except Exception as e:
-        return f"❌ AI Error: {str(e)}"
+# 2. Connect to GitHub
+g = Github(GITHUB_TOKEN)
+repo = g.get_repo(REPO_NAME)
+issue = repo.get_issue(number=ISSUE_NUMBER)
+
+# 3. Generate and Post the comment
+try:
+    test_cases = get_ai_test_cases(issue.title, issue.body)
+    issue.create_comment(f"### 🤖 AI-Generated Test Cases\n\n{test_cases}")
+except Exception as e:
+    issue.create_comment(f"❌ Error generating test cases: {str(e)}")
